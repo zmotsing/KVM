@@ -34,8 +34,6 @@ static void update_curr_other_rr(struct rq *rq)
  */
 static void enqueue_task_other_rr(struct rq *rq, struct task_struct *p, int wakeup, bool b)
 {
-	update_curr_other_rr(rq);
-
 	list_add_tail(&p->other_rr_run_list, &rq->other_rr.queue);
 	rq->other_rr.nr_running++;
 }
@@ -82,14 +80,13 @@ static struct task_struct *pick_next_task_other_rr(struct rq *rq)
 {
 	struct task_struct *next;
 	struct list_head *queue;
-	struct other_rr_rq *other_rr_rq;
 
 	queue = &rq->other_rr.queue;
 
 	if(list_empty(queue))
 		return NULL;
 
-	next = list_entry(queue, struct task_struct, other_rr_run_list);
+	next = list_entry(queue->next, struct task_struct, other_rr_run_list);
 
 	/* after selecting a task, we need to set a timer to maintain correct
 	 * runtime statistics. You can uncomment this line after you have
@@ -193,15 +190,13 @@ static void task_tick_other_rr(struct rq *rq, struct task_struct *p, int queued)
 
 	if(other_rr_time_slice != 0)
 	{
-		if(p->task_time_slice != 0)
-		{
-			p->task_time_slice--;
-		}
-		else
+		p->task_time_slice--;
+
+		if(p->task_time_slice == 0)
 		{
 			p->task_time_slice = other_rr_time_slice;
 			set_tsk_need_resched(p);
-			requeue_task_other_rr(rq, p);
+			requeue_task_other_rr(rq, rq->curr);
 		}
 	}
 }
