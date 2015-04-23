@@ -64,7 +64,7 @@ static void requeue_task_other_rr(struct rq *rq, struct task_struct *p)
 static void
 yield_task_other_rr(struct rq *rq)
 {
-	requeue_task_other_rr(rq, &rq->other_rr.queue);
+	requeue_task_other_rr(rq, rq->curr);
 }
 
 /*
@@ -84,8 +84,12 @@ static struct task_struct *pick_next_task_other_rr(struct rq *rq)
 	struct list_head *queue;
 	struct other_rr_rq *other_rr_rq;
 
-	queue = rq->other_rr.queue;
-	next = queue->next;
+	queue = &rq->other_rr.queue;
+
+	if(list_empty(queue))
+		return NULL;
+
+	next = list_entry(queue, struct task_struct, other_rr_run_list);
 
 	/* after selecting a task, we need to set a timer to maintain correct
 	 * runtime statistics. You can uncomment this line after you have
@@ -182,16 +186,14 @@ move_one_task_other_rr(struct rq *this_rq, int this_cpu, struct rq *busiest,
 /*
  * task_tick_other_rr is invoked on each scheduler timer tick.
  */
-static void task_tick_other_rr(struct rq *rq, struct task_struct *p,int queued)
+static void task_tick_other_rr(struct rq *rq, struct task_struct *p, int queued)
 {
 	// first update the task's runtime statistics
 	update_curr_other_rr(rq);
 
-	int quantum = sched_other_rr_getquantum;
-
 	if(other_rr_time_slice != 0)
 	{
-		if(p->tast_time_slice != 0)
+		if(p->task_time_slice != 0)
 		{
 			p->task_time_slice--;
 		}
